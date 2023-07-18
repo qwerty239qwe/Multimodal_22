@@ -35,17 +35,32 @@ def evaluate(y_pred_pth, y_true_pth, result_df_pth):
                          var=Path(y_pred_pth) / "var.csv",
                          obs=Path(y_pred_pth) / "obs.csv")
     
+    y_true.X = y_true.X.tocsr()
+    y_pred.X = y_pred.X.tocsr()
+
+    sc.pp.normalize_total(y_true)
+    sc.pp.log1p(y_true)
+
+    sc.pp.normalize_total(y_pred)
+    sc.pp.log1p(y_pred)
+    
     results = {}
     prs = [stats.pearsonr(y_true.X.toarray()[:, i], 
-                          y_pred.X.toarray()[:, i])[0] for i in range(y_true.var.shape[0])]
+                          y_pred.X.toarray()[:, i])[0]
+                           if np.all(np.isfinite(y_true.X.toarray()[:, i])) and 
+                           np.all(np.isfinite(y_pred.X.toarray()[:, i])) else
+                          0
+                        for i in range(y_true.var.shape[0])]
     results["PearsonR_mean"] = np.mean(prs)
     results["PearsonR_std"] = np.std(prs)
 
-    r2s = r2_score(y_true.X.toarray(), y_pred.X.toarray(), multioutput="raw_values")
+    r2s = r2_score(y_true.X.toarray()[:, np.all(np.isfinite(y_true.X.toarray()), axis=0)], 
+                   y_pred.X.toarray()[:, np.all(np.isfinite(y_pred.X.toarray()), axis=0)], multioutput="raw_values")
     results["R2_mean"] = np.mean(r2s)
     results["R2_std"] = np.std(r2s)
 
-    mses = mean_squared_error(y_true.X.toarray(), y_pred.X.toarray(), multioutput="raw_values")
+    mses = mean_squared_error(y_true.X.toarray()[:, np.all(np.isfinite(y_true.X.toarray()), axis=0)], 
+                              y_pred.X.toarray()[:, np.all(np.isfinite(y_pred.X.toarray()), axis=0)], multioutput="raw_values")
     results["MSE_mean"] = np.mean(mses)
     results["MSE_std"] = np.std(mses)
 
@@ -111,15 +126,20 @@ if __name__ == "__main__":
         result_dir = Path(data_configs["result_dir_pth"]).mkdir(parents=True, exist_ok=True)
         print_info(est_time, n_obs=int(args.obs), n_var=int(args.var), hparams={}, memory_used=est_mem,
                    file_name= Path(data_configs["result_dir_pth"]) / f"seurat.csv")
+    else:
+        Path(data_configs["X_train_processed_dir"]).mkdir(exist_ok=True)
+        Path(data_configs["y_train_processed_dir"]).mkdir(exist_ok=True)
+        Path(data_configs["X_test_processed_dir"]).mkdir(exist_ok=True)
+        Path(data_configs["result_dir_pth"]).mkdir(exist_ok=True)
 
-    run_seurat_ref_mapping(X_train_pth=data_configs["X_train_pth"],
-                           X_train_p_pth=data_configs["X_train_processed_dir"],
-                           y_train_pth=data_configs["y_train_pth"],
-                           y_train_p_pth=data_configs["y_train_processed_dir"],
-                           X_test_pth=data_configs["X_test_pth"],
-                           X_test_p_pth=data_configs["X_test_processed_dir"],
-                           y_pred_pth=data_configs["result_dir_pth"])
-    
-    evaluate(y_pred_pth=data_configs["result_dir_pth"], 
-             y_true_pth=data_configs["y_test_pth"], 
-             result_df_pth=Path(data_configs["result_dir_pth"])/"result.csv")
+        run_seurat_ref_mapping(X_train_pth=data_configs["X_train_pth"],
+                            X_train_p_pth=data_configs["X_train_processed_dir"],
+                            y_train_pth=data_configs["y_train_pth"],
+                            y_train_p_pth=data_configs["y_train_processed_dir"],
+                            X_test_pth=data_configs["X_test_pth"],
+                            X_test_p_pth=data_configs["X_test_processed_dir"],
+                            y_pred_pth=data_configs["result_dir_pth"])
+        
+        evaluate(y_pred_pth=data_configs["result_dir_pth"], 
+                y_true_pth=data_configs["y_test_pth"], 
+                result_df_pth=Path(data_configs["result_dir_pth"])/"result.csv")

@@ -40,6 +40,7 @@ if __name__ == "__main__":
         print_info(est_time, n_obs=int(args.obs), n_var=int(args.var), hparams={}, memory_used=est_mem,
                    file_name= Path(data_configs["result_dir_pth"]) / f"totalVI.csv")
     else:
+        Path(data_configs["result_dir_pth"]).mkdir(exist_ok=True)
         adata_x = train_totalVI(x_train_path=data_configs["X_train_pth"],
                                 y_train_path=data_configs["y_train_pth"],
                                 model_path=data_configs["model_pth"],

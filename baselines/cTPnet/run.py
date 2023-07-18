@@ -27,7 +27,7 @@ def denoise_data(X_pth,
     savexr(X_output, X_output, pretrained)
 
 
-def train(data_configs, max_epochs=200):
+def train(data_configs, max_epochs=20):
     train_set = cTPnetDataset(
         X_path=data_configs["X_train_processed_dir"],
         y_path=data_configs["y_train_pth"]
@@ -53,7 +53,7 @@ def train(data_configs, max_epochs=200):
               max_epochs=max_epochs,
               callbacks=[
                   EarlyStopping(monitor="val_loss",
-                        min_delta=0.001, patience=30,  # as described in https://github.com/zhouzilu/cTPnet/blob/master/extdata/training_05152020.py
+                        min_delta=0.001, patience=3,  # as described in https://github.com/zhouzilu/cTPnet/blob/master/extdata/training_05152020.py
                         verbose=False, mode="min"),
               ],
               devices=1)
@@ -135,6 +135,9 @@ if __name__ == "__main__":
 
     else:
         if args.denoise:
+            Path(data_configs["X_train_processed_dir"]).mkdir(exist_ok=True)
+            Path(data_configs["X_test_processed_dir"]).mkdir(exist_ok=True)
+
             print("Running the denoise step in cTPnet")
             denoise_data(X_pth=data_configs["X_train_pth"], 
                         X_output=data_configs["X_train_processed_dir"],
